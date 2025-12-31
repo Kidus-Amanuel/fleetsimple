@@ -21,8 +21,8 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isOnboarded: false,
   loading: true,
-  logout: async () => {},
-  refreshAuth: async () => {},
+  logout: async () => { },
+  refreshAuth: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { session } } = await supabase.auth.getSession();
     const currentUser = session?.user ?? null;
     setUser(currentUser);
-    
+
     if (currentUser) {
       await checkOnboardingStatus();
     } else {
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      
+
       if (currentUser) {
         await checkOnboardingStatus();
       } else {
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (isAuthenticated && !isOnboarded && !pathname.startsWith("/onboarding")) {
       router.push("/onboarding");
     } else if (isAuthenticated && isOnboarded && (isPublicRoute || pathname.startsWith("/onboarding"))) {
-      router.push("/");
+      router.push("/dashboard");
     }
   }, [user, isOnboarded, loading, pathname, router]);
 
@@ -105,10 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setCompany(null);
       setIsOnboarded(false);
-      
+
       // Attempt to sign out from Supabase (async)
       await api.auth.signOut();
-      
+
       // Clear any potential local storage or cookies if they exist
       if (typeof window !== "undefined") {
         localStorage.clear();
@@ -129,14 +129,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       company,
-      isAuthenticated: !!user, 
-      isOnboarded, 
-      loading, 
+      isAuthenticated: !!user,
+      isOnboarded,
+      loading,
       logout,
-      refreshAuth 
+      refreshAuth
     }}>
       {children}
     </AuthContext.Provider>

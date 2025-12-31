@@ -123,7 +123,7 @@ export default function OnboardingPage() {
       ) : (
         <div className="mx-auto w-full max-w-[480px] text-center sm:max-w-[540px] relative z-10">
           <div className="mb-8">
-            <h1 className="mb-3 font-bold text-gray-800 text-title-md dark:text-white/90 sm:text-title-2xl">
+            <h1 className="mb-3 font-bold text-gray-800 text-title-md dark:text-white/90 ">
               {step === "welcome" && "Welcome to Simple"}
               {step === "company" && "Register Your Company"}
               {step === "finishing" && "All Set!"}

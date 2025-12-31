@@ -28,7 +28,7 @@ export default function OnboardingPage() {
         if (company && company.id) {
           // User already has a company, redirect to dashboard
           toast.success("Welcome back! Redirecting to your dashboard...");
-          router.push("/");
+          router.push("/dashboard");
           return;
         }
         // No company found, allow onboarding
@@ -68,6 +68,7 @@ export default function OnboardingPage() {
 
   const handleCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       // Create Company
@@ -82,19 +83,18 @@ export default function OnboardingPage() {
         is_active: true,
       });
 
+      // Update local state to show finishing UI
       setStep("finishing");
-      toast.success("Onboarding completed successfully!");
+      toast.success("Company created! Finalizing setup...");
 
-      // Give a moment for the success state before refreshing auth and redirecting
-      setTimeout(async () => {
-        await refreshAuth();
-        router.push("/");
-      }, 2000);
+      // Refresh auth to update onboarding status in context
+      await refreshAuth();
 
+      // Explicit redirect as fallback, although AuthContext should handle it
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Onboarding error:", error);
       toast.error(error.message || "Failed to complete onboarding");
-    } finally {
       setLoading(false);
     }
   };

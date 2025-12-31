@@ -96,22 +96,22 @@ export default function ReplayPage() {
 
         if (!data || data.length === 0) {
           data = [
-            {
-              id: 1,
-              license_plate: "AA-12345",
-              make: "Toyota",
-              model: "Hilux",
-              driver: { full_name: "Abebe Bikila" },
-              status: "active"
-            },
-            {
-              id: 2,
-              license_plate: "AA-54321",
-              make: "Hyundai",
-              model: "Atos",
-              driver: { full_name: "Kebede Molla" },
-              status: "idle"
-            },
+            // {
+            //   id: 1,
+            //   license_plate: "AA-12345",
+            //   make: "Toyota",
+            //   model: "Hilux",
+            //   driver: { full_name: "Abebe Bikila" },
+            //   status: "active"
+            // },
+            // {
+            //   id: 2,
+            //   license_plate: "AA-54321",
+            //   make: "Hyundai",
+            //   model: "Atos",
+            //   driver: { full_name: "Kebede Molla" },
+            //   status: "idle"
+            // },
           ];
         }
 

@@ -56,24 +56,7 @@ export default function PositionPage() {
 
       if (!realVehicles || realVehicles.length === 0) {
         realVehicles = [
-          {
-            id: 1,
-            vehicle_number: "DEMO-01",
-            make: "Toyota",
-            model: "Hilux",
-            license_plate: "AA-12345",
-            driver: { full_name: "Abebe Bikila" },
-            color: "#3B82F6"
-          },
-          {
-            id: 2,
-            vehicle_number: "DEMO-02",
-            make: "Hyundai",
-            model: "Atos",
-            license_plate: "AA-54321",
-            driver: { full_name: "Kebede Molla" },
-            color: "#10B981"
-          },
+
         ];
       }
 

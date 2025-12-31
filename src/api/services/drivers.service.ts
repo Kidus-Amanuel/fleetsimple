@@ -22,4 +22,25 @@ export const driversService = {
     if (error) throw error;
     return data as Driver;
   },
+
+  async updateDriver(id: number, updates: Partial<Driver>) {
+    const { data, error } = await supabase
+      .from("drivers")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Driver;
+  },
+
+  async deleteDriver(id: number) {
+    const { error } = await supabase
+      .from("drivers")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  },
 };

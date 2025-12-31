@@ -75,6 +75,15 @@ export type TripLog = {
   notes?: string;
   created_at: string;
   updated_at: string;
+  vehicle?: {
+    id: number;
+    vehicle_number: string;
+    license_plate: string;
+  };
+  driver?: {
+    id: number;
+    full_name: string;
+  };
 };
 
 export type FuelRecord = {
@@ -90,6 +99,17 @@ export type FuelRecord = {
   receipt_url?: string;
   created_at: string;
   updated_at: string;
+  vehicle?: {
+    id: number;
+    vehicle_number: string;
+    make: string;
+    model: string;
+    license_plate: string;
+  };
+  driver?: {
+    id: number;
+    full_name: string;
+  };
 };
 
 export type MaintenanceRecord = {
@@ -104,6 +124,13 @@ export type MaintenanceRecord = {
   status: 'scheduled' | 'in_progress' | 'completed';
   created_at: string;
   updated_at: string;
+  vehicle?: {
+    id: number;
+    vehicle_number: string;
+    make: string;
+    model: string;
+    license_plate: string;
+  };
 };
 
 export type SupportRequest = {

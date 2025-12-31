@@ -1,347 +1,266 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { api } from "@/api";
 import { useAuth } from "@/context/AuthContext";
-import { FaCar, FaPlus, FaSearch, FaEllipsisV, FaGasPump, FaWrench, FaCheckCircle, FaExclamationTriangle, FaTrash, FaEdit } from "react-icons/fa";
+import { api } from "@/api";
+import { FaPlus, FaSearch, FaFileExport, FaEdit, FaTrash, FaCar, FaGasPump, FaUser, FaTachometerAlt } from "react-icons/fa";
+import AddEditVehicleModal from "@/components/vehicles/AddEditVehicleModal";
+import DeleteVehicleModal from "@/components/vehicles/DeleteVehicleModal";
 import { toast } from "react-hot-toast";
 
-export default function ManageVehicles() {
-  const { company } = useAuth();
+export default function VehiclesPage() {
+  const { company, loading: authLoading } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    vehicle_number: "",
-    make: "",
-    model: "",
-    year: new Date().getFullYear(),
-    license_plate: "",
-    fuel_type: "petrol",
-    status: "available",
-    driver_id: ""
-  });
 
-  const fetchVehicles = useCallback(async () => {
+  // Modal States
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
+  const [vehicleToEdit, setVehicleToEdit] = useState<any | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (company?.id) {
+        fetchVehicles();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [company?.id, authLoading]);
+
+  const fetchVehicles = async () => {
     if (!company?.id) return;
+    console.log("Fetching vehicles for company:", company.id);
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await api.vehicles.getVehicles(company.id);
-      setVehicles(data);
+      console.log("Vehicles data:", data);
+      setVehicles(data || []);
     } catch (error) {
-      console.error("Error fetching vehicles:", error);
+      console.error("Failed to load vehicles", error);
       toast.error("Failed to load vehicles");
     } finally {
       setLoading(false);
     }
-  }, [company?.id]);
-
-  const fetchDrivers = useCallback(async () => {
-    if (!company?.id) return;
-    try {
-      const data = await api.drivers.getDrivers(company.id);
-      setDrivers(data);
-    } catch (error) {
-      console.error("Error fetching drivers:", error);
-    }
-  }, [company?.id]);
-
-  useEffect(() => {
-    fetchVehicles();
-    fetchDrivers();
-  }, [fetchVehicles, fetchDrivers]);
+  };
 
   const filteredVehicles = useMemo(() => {
     if (!searchTerm) return vehicles;
-    const term = searchTerm.toLowerCase();
-    return vehicles.filter(v => 
-      v.vehicle_number?.toLowerCase().includes(term) ||
-      v.license_plate?.toLowerCase().includes(term) ||
-      v.model?.toLowerCase().includes(term) ||
-      v.make?.toLowerCase().includes(term)
+    const lower = searchTerm.toLowerCase();
+    return vehicles.filter(v =>
+      v.vehicle_number?.toLowerCase().includes(lower) ||
+      v.make?.toLowerCase().includes(lower) ||
+      v.model?.toLowerCase().includes(lower) ||
+      v.license_plate?.toLowerCase().includes(lower) ||
+      v.driver?.full_name?.toLowerCase().includes(lower)
     );
   }, [vehicles, searchTerm]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!company?.id) return;
+  const handleExport = () => {
+    // Basic CSV Export
+    const headers = ["Vehicle ID", "Make", "Model", "Year", "License Plate", "Fuel Type", "Current Miles", "Status", "Driver"];
+    const rows = filteredVehicles.map(v => [
+      v.vehicle_number,
+      v.make,
+      v.model,
+      v.year,
+      v.license_plate,
+      v.fuel_type,
+      v.current_mileage,
+      v.status,
+      v.driver?.full_name || "Unassigned"
+    ]);
 
-    try {
-      const payload = {
-        ...formData,
-        company_id: company.id,
-        driver_id: formData.driver_id ? parseInt(formData.driver_id) : null,
-        year: parseInt(formData.year.toString()),
-        current_mileage: 0
-      };
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
 
-      await api.vehicles.createVehicle(payload as any);
-      toast.success("Vehicle added successfully!");
-      setIsModalOpen(false);
-      setFormData({
-        vehicle_number: "",
-        make: "",
-        model: "",
-        year: new Date().getFullYear(),
-        license_plate: "",
-        fuel_type: "petrol",
-        status: "available",
-        driver_id: ""
-      });
-      fetchVehicles();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Failed to add vehicle");
-    }
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "vehicles_list.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this vehicle?")) return;
-    try {
-      await api.vehicles.deleteVehicle(id);
-      toast.success("Vehicle deleted");
-      fetchVehicles();
-    } catch (error) {
-      toast.error("Failed to delete vehicle");
-    }
+  const openAddModal = () => {
+    setVehicleToEdit(null);
+    setIsAddEditModalOpen(true);
+  };
+
+  const openEditModal = (vehicle: any) => {
+    setVehicleToEdit(vehicle);
+    setIsAddEditModalOpen(true);
+  };
+
+  const openDeleteModal = (vehicle: any) => {
+    setVehicleToDelete(vehicle);
+    setIsDeleteModalOpen(true);
   };
 
   return (
-    <div className="space-y-8 p-4 sm:p-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">Fleet Assets</h1>
-          <p className="text-gray-500 dark:text-gray-400 font-bold mt-1">Registry of all company vehicles and tracked units</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Vehicles Management</h1>
+          <p className="text-gray-500 dark:text-gray-400">Manage your fleet vehicles</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative group flex-1 md:flex-none">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search assets..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full md:w-80 h-12 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10 transition-all"
-            />
-          </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="px-8 h-12 bg-brand-500 text-white rounded-2xl font-black hover:scale-105 transition-all shadow-xl shadow-brand-500/20 flex items-center gap-2 shrink-0"
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition"
+          >
+            <FaFileExport /> Export
+          </button>
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 flex items-center gap-2 transition"
           >
             <FaPlus /> Add Vehicle
           </button>
         </div>
       </div>
 
-      {/* Stats Board */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: "Total Assets", value: vehicles.length, icon: FaCar, color: "bg-blue-500" },
-          { label: "Available", value: vehicles.filter(v => v.status === "available").length, icon: FaCheckCircle, color: "bg-emerald-500" },
-          { label: "In Service", value: vehicles.filter(v => v.status === "in_use").length, icon: FaGasPump, color: "bg-orange-500" },
-          { label: "Maintenance", value: vehicles.filter(v => v.status === "maintenance").length, icon: FaWrench, color: "bg-red-500" },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/5 p-6 rounded-4xl shadow-xl">
-             <div className={`${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-${stat.color.split('-')[1]}-500/20`}>
-                <stat.icon size={20} />
-             </div>
-             <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-1">{stat.label}</p>
-             <p className="text-3xl font-black text-gray-900 dark:text-white">{stat.value}</p>
-          </div>
-        ))}
+      {/* Search Bar */}
+      <div className="relative">
+        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search by ID, Make, Model, Plate, or Driver..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-brand-500 dark:bg-gray-800 dark:text-white"
+        />
       </div>
 
-      {/* Vehicles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {loading ? (
-          Array(6).fill(0).map((_, i) => (
-            <div key={i} className="h-64 rounded-4xl bg-gray-100 dark:bg-white/5 animate-pulse" />
-          ))
-        ) : filteredVehicles.length === 0 ? (
-          <div className="col-span-full py-20 bg-white dark:bg-gray-900 rounded-4xl border-2 border-dashed border-gray-200 dark:border-white/5 flex flex-col items-center justify-center text-center">
-             <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 mb-6">
-                <FaCar size={32} />
-             </div>
-             <h3 className="text-xl font-black text-gray-900 dark:text-white">No Assets Registered</h3>
-             <p className="text-gray-500 font-bold mt-2 mb-8">Start by adding your first company vehicle to the fleet.</p>
-             <button 
-               onClick={() => setIsModalOpen(true)}
-               className="px-10 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black shadow-2xl hover:scale-105 transition-all"
-             >
-               Add First Vehicle
-             </button>
-          </div>
-        ) : (
-          filteredVehicles.map((v) => (
-            <div key={v.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/5 rounded-4xl p-6 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden">
-               <div className="flex items-start justify-between mb-6">
-                  <div className="w-16 h-16 rounded-3xl bg-brand-500/10 flex items-center justify-center text-brand-500">
-                    <FaCar size={28} />
-                  </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    <button className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-brand-500 transition-colors">
-                      <FaEdit />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(v.id)}
-                      className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-               </div>
-               
-               <div>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">{v.license_plate}</h3>
-                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">{v.make} {v.model} ({v.year})</p>
-               </div>
-
-               <div className="mt-8 flex items-center justify-between border-t border-gray-100 dark:border-white/5 pt-6">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</span>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                      v.status === 'available' ? 'bg-emerald-100 text-emerald-700' :
-                      v.status === 'in_use' ? 'bg-blue-100 text-blue-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {v.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Driver</span>
-                    <span className="text-sm font-black text-gray-900 dark:text-white">
-                      {v.driver?.full_name || "Unassigned"}
-                    </span>
-                  </div>
-               </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-900 w-full max-w-lg rounded-4xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
-             <div className="p-8 border-b border-gray-100 dark:border-white/10">
-                <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">Add New Asset</h2>
-                <p className="text-gray-500 font-bold mt-1">Register a new vehicle to your fleet registry</p>
-             </div>
-             
-             <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                   <div className="col-span-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Vehicle ID</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="FLT-001"
-                        value={formData.vehicle_number}
-                        onChange={e => setFormData({...formData, vehicle_number: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10"
-                      />
-                   </div>
-                   <div className="col-span-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">License Plate</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="AA-2-B12345"
-                        value={formData.license_plate}
-                        onChange={e => setFormData({...formData, license_plate: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10"
-                      />
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-6">
-                   <div className="col-span-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Make</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="Toyota"
-                        value={formData.make}
-                        onChange={e => setFormData({...formData, make: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10"
-                      />
-                   </div>
-                   <div className="col-span-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Model</label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="Hilux"
-                        value={formData.model}
-                        onChange={e => setFormData({...formData, model: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10"
-                      />
-                   </div>
-                   <div className="col-span-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Year</label>
-                      <input 
-                        type="number" 
-                        required
-                        value={formData.year}
-                        onChange={e => setFormData({...formData, year: parseInt(e.target.value)})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none focus:ring-4 focus:ring-brand-500/10"
-                      />
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Fuel Type</label>
-                      <select 
-                        value={formData.fuel_type}
-                        onChange={e => setFormData({...formData, fuel_type: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none"
-                      >
-                         <option value="petrol">Petrol</option>
-                         <option value="diesel">Diesel</option>
-                         <option value="electric">Electric</option>
-                         <option value="hybrid">Hybrid</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mb-2 block">Assigned Driver</label>
-                      <select 
-                        value={formData.driver_id}
-                        onChange={e => setFormData({...formData, driver_id: e.target.value})}
-                        className="w-full h-12 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 text-sm font-bold dark:text-white outline-none"
-                      >
-                         <option value="">No Driver Assigned</option>
-                         {drivers.map(d => (
-                           <option key={d.id} value={d.id}>{d.full_name}</option>
-                         ))}
-                      </select>
-                   </div>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                   <button 
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 h-14 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white rounded-2xl font-black transition-all"
-                   >
-                     Cancel
-                   </button>
-                   <button 
-                    type="submit"
-                    className="flex-1 h-14 bg-brand-500 text-white rounded-2xl font-black shadow-xl shadow-brand-500/20 hover:scale-105 transition-all"
-                   >
-                     Create Asset
-                   </button>
-                </div>
-             </form>
-          </div>
+      {/* Vehicles List */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                <th className="px-6 py-4">Vehicle</th>
+                <th className="px-6 py-4">Identifiers</th>
+                <th className="px-6 py-4">Fuel</th>
+                <th className="px-6 py-4">Driver</th>
+                <th className="px-6 py-4">Mileage</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                    <td className="px-6 py-4"><div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16 ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : filteredVehicles.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    No vehicles found matching your search.
+                  </td>
+                </tr>
+              ) : (
+                filteredVehicles.map((vehicle) => (
+                  <tr key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
+                          <FaCar className="text-xl" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">{vehicle.make} {vehicle.model}</p>
+                          <p className="text-xs text-gray-500">{vehicle.year}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded w-fit">
+                          {vehicle.license_plate}
+                        </span>
+                        <span className="text-xs text-gray-500">ID: {vehicle.vehicle_number}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 capitalize">
+                        <FaGasPump className="text-gray-400 text-xs" />
+                        {vehicle.fuel_type}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <FaUser className="text-gray-400 text-xs" />
+                        <span className={vehicle.driver?.full_name ? "text-gray-900 dark:text-white" : "text-gray-400 italic"}>
+                          {vehicle.driver?.full_name || 'Unassigned'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-1">
+                        <FaTachometerAlt className="text-gray-400 text-xs" />
+                        {vehicle.current_mileage?.toLocaleString()} km
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${vehicle.status === 'available'
+                        ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                        : vehicle.status === 'in_use'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+                          : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                        }`}>
+                        {vehicle.status?.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openEditModal(vehicle)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
+                          title="Edit"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(vehicle)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition"
+                          title="Delete"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
+
+      <AddEditVehicleModal
+        isOpen={isAddEditModalOpen}
+        onClose={() => setIsAddEditModalOpen(false)}
+        onSuccess={fetchVehicles}
+        vehicleToEdit={vehicleToEdit}
+      />
+
+      <DeleteVehicleModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={fetchVehicles}
+        vehicleId={vehicleToDelete?.id}
+        vehicleName={`${vehicleToDelete?.make} ${vehicleToDelete?.model} (${vehicleToDelete?.vehicle_number})`}
+      />
     </div>
   );
 }

@@ -23,6 +23,18 @@ export const vehiclesService = {
     return data as Vehicle;
   },
 
+  async updateVehicle(id: number, updates: Partial<Vehicle>) {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Vehicle;
+  },
+
   async deleteVehicle(id: number) {
     const { error } = await supabase
       .from("vehicles")

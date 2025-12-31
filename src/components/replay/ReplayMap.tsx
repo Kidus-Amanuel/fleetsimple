@@ -14,7 +14,7 @@ const createPlaybackIcon = (color: string = '#4680FF', isCurrent: boolean = fals
       <div className="relative">
         <FaMapMarkerAlt className={`h-12 w-12 drop-shadow-2xl ${isCurrent ? 'animate-bounce' : ''}`} style={{ color }} />
         <div className="absolute top-[20%] left-1/2 -translate-x-1/2 bg-white rounded-full p-1 shadow-inner">
-           <FaCar className="h-4 w-4" style={{ color }} />
+          <FaCar className="h-4 w-4" style={{ color }} />
         </div>
         {isCurrent && (
           <div className="absolute -inset-2 rounded-full bg-blue-500/20 animate-ping" />
@@ -71,9 +71,10 @@ function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => v
 interface ReplayMapProps {
   polylinePoints: [number, number][];
   currentPoint: any;
+  mapType?: "road" | "satellite";
 }
 
-export default function ReplayMap({ polylinePoints, currentPoint }: ReplayMapProps) {
+export default function ReplayMap({ polylinePoints, currentPoint, mapType = "road" }: ReplayMapProps) {
   const [interestPoints, setInterestPoints] = useState<any[]>([]);
 
   // Trigger resize after mount to ensure leaflet fills container
@@ -88,11 +89,15 @@ export default function ReplayMap({ polylinePoints, currentPoint }: ReplayMapPro
     setInterestPoints(prev => [...prev.slice(-4), { id: Date.now(), lat, lng }]);
   };
 
-  const center: [number, number] = currentPoint 
+  const center: [number, number] = currentPoint
     ? [Number(currentPoint.latitude), Number(currentPoint.longitude)]
-    : polylinePoints.length > 0 
-      ? polylinePoints[0] 
+    : polylinePoints.length > 0
+      ? polylinePoints[0]
       : [9.02, 38.75];
+
+  const tileUrl = mapType === "satellite"
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
   return (
     <MapContainer
@@ -101,55 +106,58 @@ export default function ReplayMap({ polylinePoints, currentPoint }: ReplayMapPro
       className="h-full w-full z-0"
       zoomControl={false}
     >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <TileLayer
+        url={tileUrl}
+        attribution={mapType === "satellite" ? "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community" : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}
+      />
       <MapController center={currentPoint ? [Number(currentPoint.latitude), Number(currentPoint.longitude)] : undefined} />
       <MapEvents onMapClick={addInterestPoint} />
-      
+
       {polylinePoints.length > 0 && (
         <>
-          <Polyline 
-            positions={polylinePoints} 
-            color="#4680FF" 
-            weight={6} 
+          <Polyline
+            positions={polylinePoints}
+            color="#4680FF"
+            weight={6}
             opacity={0.4}
             lineCap="round"
           />
-          <Polyline 
-            positions={polylinePoints} 
-            color="#4680FF" 
-            weight={2} 
+          <Polyline
+            positions={polylinePoints}
+            color="#4680FF"
+            weight={2}
             opacity={1}
             dashArray="10, 10"
           />
-          
+
           <Marker position={polylinePoints[0]} icon={createStartEndIcon('start')} />
           <Marker position={polylinePoints[polylinePoints.length - 1]} icon={createStartEndIcon('end')} />
         </>
       )}
 
       {currentPoint && (
-        <Marker 
+        <Marker
           position={[Number(currentPoint.latitude), Number(currentPoint.longitude)]}
           icon={createPlaybackIcon('#4680FF', true)}
         >
           <Popup className="custom-popup" minWidth={200}>
             <div className="p-4 bg-white dark:bg-gray-900 rounded-2xl">
-               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Snapshot</p>
-               <p className="font-black text-gray-900 dark:text-white mb-3 text-xs">
-                 {new Date(currentPoint.recorded_at).toLocaleString()}
-               </p>
-               <div className="grid grid-cols-2 gap-4 border-t pt-3 border-gray-100 dark:border-white/10 text-xs">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Snapshot</p>
+              <p className="font-black text-gray-900 dark:text-white mb-3 text-xs">
+                {new Date(currentPoint.recorded_at).toLocaleString()}
+              </p>
+              <div className="grid grid-cols-2 gap-4 border-t pt-3 border-gray-100 dark:border-white/10 text-xs">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Speed</p>
+                  <p className="font-black text-brand-500">{currentPoint.speed} km/h</p>
+                </div>
+                {currentPoint.fuel && (
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Speed</p>
-                    <p className="font-black text-brand-500">{currentPoint.speed} km/h</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Fuel</p>
+                    <p className="font-black text-orange-500">{currentPoint.fuel}%</p>
                   </div>
-                  {currentPoint.fuel && (
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">Fuel</p>
-                      <p className="font-black text-orange-500">{currentPoint.fuel}%</p>
-                    </div>
-                  )}
-               </div>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>

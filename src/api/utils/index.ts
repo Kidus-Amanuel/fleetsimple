@@ -1,0 +1,14 @@
+/**
+ * API Utility Functions
+ */
+
+export const formatDate = (date: string | Date) => {
+  return new Date(date).toLocaleDateString();
+};
+
+export const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+};

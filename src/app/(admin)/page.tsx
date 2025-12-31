@@ -30,6 +30,9 @@ function calculateTripProgress(startTime: string): number {
   return Math.min(Math.round((elapsed / estimatedDuration) * 100), 95);
 }
 
+import Link from "next/link";
+import SupportModal from "@/components/support/SupportModal";
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<any>(null);
@@ -39,6 +42,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const [isAddVehicleModalOpen, setIsAddVehicleModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -128,18 +132,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-
-        </div>
-        <div className="flex gap-3">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-brand-600 to-brand-400 rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
+        <div className="relative z-10">
+          <h1 className="text-3xl font-bold mb-2">Welcome Back, {(user as any)?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'}!</h1>
+          <p className="opacity-90 max-w-xl mb-6">
+            Your fleet is performing 12% better than last month. You have 3 pending maintenance alerts today.
+          </p>
           <button
-            onClick={() => setIsAddVehicleModalOpen(true)}
-            className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition"
+            onClick={() => setIsSupportModalOpen(true)}
+            className="px-6 py-3 bg-white text-brand-500 rounded-lg hover:bg-gray-100 transition font-medium"
           >
-            Add Vehicle
+            Open Command Center
           </button>
+        </div>
+        <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
+          <svg className="w-60 h-60" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
+          </svg>
         </div>
       </div>
 
@@ -192,7 +202,7 @@ export default function Dashboard() {
             <div className="xl:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Active Trips</h2>
-                <a href="/position" className="text-brand-500 hover:text-brand-600 text-sm font-medium">View Map →</a>
+                <Link href="/position" className="text-brand-500 hover:text-brand-600 text-sm font-medium">View Map →</Link>
               </div>
               <div className="space-y-4">
                 {activeTrips.length === 0 ? (
@@ -263,18 +273,11 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Bottom Support Section */}
-      <div className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-bold mb-2">Need Support?</h3>
-            <p className="text-brand-100">Get help from our team via the command center</p>
-          </div>
-          <button className="px-6 py-3 bg-white text-brand-500 rounded-lg hover:bg-gray-100 transition font-medium">
-            Open Command Center
-          </button>
-        </div>
-      </div>
+      {/* Modals */}
+      <SupportModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+      />
 
       <AddVehicleModal
         isOpen={isAddVehicleModalOpen}
@@ -284,5 +287,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-

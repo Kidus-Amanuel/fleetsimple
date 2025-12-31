@@ -9,6 +9,7 @@ import { trackingService } from "./services/tracking.service";
 import { maintenanceService } from "./services/maintenance.service";
 import { fuelService } from "./services/fuel.service";
 import { analyticsService } from "./services/analytics.service";
+import { supportService } from "./services/support.service";
 
 export const api = {
   auth: authService,
@@ -21,6 +22,7 @@ export const api = {
   maintenance: maintenanceService,
   fuel: fuelService,
   analytics: analyticsService,
+  support: supportService,
 };
 
 export * from "./types";
